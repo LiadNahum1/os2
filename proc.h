@@ -32,7 +32,7 @@ struct context {
   uint eip;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
 
 // Per-process state
 struct proc {
@@ -53,8 +53,8 @@ struct proc {
   uint pending_signals;     
   uint signal_mask;
   void* signal_handlers[32];
-  struct trapframe *backup;
-   
+  struct trapframe *backup; 
+  int suspended;
 };
 
 // Process memory is laid out contiguously, low addresses first:
