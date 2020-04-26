@@ -526,10 +526,9 @@ kill(int pid , int signum)
  
 }
 
-int kill_handler(void){
+void kill_handler(void){
   struct proc *p = myproc();
   p->killed = 1;
-  return 0; 
 }
 /*
 struct proc *p;
@@ -608,10 +607,40 @@ void sigret(){
  return;
 }
 
-int stop_handler(void){
-  
+void stop_handler(void){
+  struct proc *p = myproc();
+  p->suspended = 1; 
+}
+
+void cont_handler(void){
+  struct proc *p = myproc();
+  if (p-> suspended == 1)
+    p->suspended = 0; 
 }
 
 void check_for_signals(void){
+  struct proc *p = myproc();
+  int signal_index = 1;
+  int is_blocked;
+  for(int i=0; i<32; i=i+1){
+    is_blocked = p->signal_mask & signal_index == signal_index; //check if signal is blocked 
+    //check if signal's flag is on and it is not blocked 
+    if((p->pending_signals & signal_index == signal_index) & is_blocked == 0){
+      p->pending_signals = p->pending_signals & (~signal_index); //discard signal
+      if((int)p->signal_handlers[i] != SIG_IGN){
+        if ((int)p->signal_handlers[i] == SIG_DFL){
+          if(i == SIGCONT)
+            cont_handler();
+          else if(i==SIGSTOP)
+            stop_handler();
+          else
+            kill_handler();
+        }
+        else{
+          
+        }
+    }
+    signal_index = signal_index<<1; 
+  }
 
 }
