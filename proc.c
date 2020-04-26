@@ -160,8 +160,9 @@ userinit(void)
 
   p->signal_mask = 0;
   p->pending_signals =0;
+  p->suspended =0;
    //initialize handlers to be default  
-  for(int i=0; i<len(p->signal_handlers); i++){
+  for(int i=0; i<32; i++){
     p->signal_handlers[i] = (void*)SIG_DFL;
   }
 
@@ -237,8 +238,10 @@ fork(void)
 
   np->signal_mask = curproc->signal_mask;
   np->pending_signals = 0; 
+  np->suspended = 0;
   //copy signal handlers from parent 
-  for(int i=0; i<len(curproc->signal_handlers); i++){
+  
+  for(int i=0; i<32; i++){
     np->signal_handlers[i] = curproc->signal_handlers[i];
   }
 
@@ -510,17 +513,20 @@ int
 kill(int pid , int signum)
 {
  struct proc *p;
- acquire(&ptable.lock);
+  if (signum > 31 || signum < 0)
+  return -1;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
-      p->pending_signals = p->pending_signals | 1>>signum;
-          }
+      p->pending_signals = p->pending_signals | 1<<signum;
+      return 0;
+    }
   }
+  return -1;
 
  
 }
 
-int kill_handler(pid){
+int kill_handler(int pid){
 struct proc *p;
  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -589,9 +595,8 @@ int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact
     if (oldact != null){
       *oldact = *(struct sigaction *)(p->signal_handlers[signum]);
     }
-    p->signal_handlers[signum] = act;
+    p->signal_handlers[signum] = (struct sigaction *)act;
     return 0;
-
 }
 
 void sigret(){

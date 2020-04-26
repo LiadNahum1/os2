@@ -102,8 +102,8 @@ exec(char *path, char **argv)
 
   //add assign2
   //return all signal handlers to default except SIG_IGN 
-  for(int i=0; i<len(curproc->signal_handlers); i++){
-    if (curproc->signal_handlers[i] != SIG_IGN)
+  for(int i=0; i<32; i++){
+    if ((int)curproc->signal_handlers[i] != SIG_IGN)
       curproc->signal_handlers[i] = SIG_DFL;
   }
 

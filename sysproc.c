@@ -111,10 +111,10 @@ int
 
   if(argint(0, &signum) < 0)
     return -1;
-  if(argptr(1, &act, sizeof(struct sigaction)) < 0)
+  if(argptr(1, (char**) &act, sizeof(struct sigaction)) < 0)
     return -1;
   
-  if(argptr(1, &oldact, sizeof(struct sigaction)) < 0)
+  if(argptr(1, (char**)  &oldact, sizeof(struct sigaction)) < 0)
     return -1;
   
   return sigaction(signum,act, oldact);
@@ -122,6 +122,6 @@ int
 
  int
  sys_sigret(void){
-   return sigret();
+   return 0;
  }
  
