@@ -162,7 +162,7 @@ userinit(void)
   p->pending_signals =0;
    //initialize handlers to be default  
   for(int i=0; i<len(p->signal_handlers); i++){
-    p->signal_handlers[i] = SIG_DFL;
+    p->signal_handlers[i] = (void*)SIG_DFL;
   }
 
   // this assignment to p->state lets other cores
@@ -507,11 +507,22 @@ wakeup(void *chan)
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
 int
-kill(int pid)
+kill(int pid , int signum)
 {
-  struct proc *p;
+ struct proc *p;
+ acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->pending_signals = p->pending_signals | 1>>signum;
+          }
+  }
 
-  acquire(&ptable.lock);
+ 
+}
+
+int kill_handler(pid){
+struct proc *p;
+ acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
@@ -561,4 +572,28 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+uint sigprocmask (uint sigmask){
+  struct proc *p = myproc();
+  uint oldmask = p->signal_mask;
+  p->signal_mask = sigmask;
+  return oldmask;
+}
+
+int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact){
+    struct proc *p = myproc();
+    if (signum > 31 || signum < 0 || signum == SIGSTOP || signum == SIGKILL)
+      return -1;
+      //TODO filx oldact
+    if (oldact != null){
+      *oldact = *(struct sigaction *)(p->signal_handlers[signum]);
+    }
+    p->signal_handlers[signum] = act;
+    return 0;
+
+}
+
+void sigret(){
+ return;
 }
