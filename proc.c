@@ -158,6 +158,13 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  p->signal_mask = 0;
+  p->pending_signals =0;
+   //initialize handlers to be default  
+  for(int i=0; i<len(p->signal_handlers); i++){
+    p->signal_handlers[i] = SIG_DFL;
+  }
+
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
@@ -227,6 +234,13 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+
+  np->signal_mask = curproc->signal_mask;
+  np->pending_signals = 0; 
+  //copy signal handlers from parent 
+  for(int i=0; i<len(curproc->signal_handlers); i++){
+    np->signal_handlers[i] = curproc->signal_handlers[i];
+  }
 
   acquire(&ptable.lock);
 

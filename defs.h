@@ -120,6 +120,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+uint            sigprocmask(uint sigmask);
+int             sigaction(int signum, const struct sigaction * act, struct sigaction * oldact);
+void            sigret(void); 
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -188,3 +191,11 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+//add for assign2
+#define SIG_DFL 0 
+#define SIG_IGN 1
+
+#define SIGKILL 9
+#define SIGSTOP 17
+#define SIGCONT 19
