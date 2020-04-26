@@ -526,7 +526,12 @@ kill(int pid , int signum)
  
 }
 
-int kill_handler(int pid){
+int kill_handler(void){
+  struct proc *p = myproc();
+  p->killed = 1;
+  return 0; 
+}
+/*
 struct proc *p;
  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -541,7 +546,7 @@ struct proc *p;
   }
   release(&ptable.lock);
   return -1;
-}
+}*/
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
@@ -601,4 +606,12 @@ int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact
 
 void sigret(){
  return;
+}
+
+int stop_handler(void){
+  
+}
+
+void check_for_signals(void){
+
 }
