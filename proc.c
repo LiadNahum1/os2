@@ -607,8 +607,9 @@ int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact
     return 0;
 }
 
-void sigret(){
- return;
+void sigret(void){
+  struct proc *p = myproc();
+  *p->tf = *p->backup; 
 }
 
 void stop_handler(void){
@@ -625,16 +626,16 @@ void cont_handler(void){
 void call_sigret(void){
    asm("movl $24 , %eax;");
    asm("int $64;");
-   asm("ret");
 }
+
 void check_for_signals(void){
   struct proc *p = myproc();
   int signal_index = 1;
   int is_blocked;
   for(int i=0; i<32; i=i+1){
-    is_blocked = p->signal_mask & signal_index == signal_index; //check if signal is blocked 
+    is_blocked = (p->signal_mask & signal_index) == signal_index; //check if signal is blocked 
     //check if signal's flag is on and it is not blocked 
-    if((p->pending_signals & signal_index == signal_index) & is_blocked == 0){
+    if(((p->pending_signals & signal_index) == signal_index) & (is_blocked == 0)){
       p->pending_signals = p->pending_signals & (~signal_index); //discard signal
       if((int)p->signal_handlers[i] != SIG_IGN){
         if ((int)p->signal_handlers[i] == SIG_DFL){
@@ -649,40 +650,25 @@ void check_for_signals(void){
           int functionSize = ((int)check_for_signals - (int)call_sigret); 
           //backup trapframe 
           *p->backup = *p->tf;
+
           //put functionn
           p->tf->esp -= functionSize;
-          memmove(*(int*)p->tf->esp, &call_sigret, functionSize);
-          int returnAdress = p->tf->esp;
+          memmove((int*)p->tf->esp, &call_sigret, functionSize);
+          uint returnAdress = p->tf->esp;
+
           // push argumants
           p->tf->esp -= sizeof i;
           *(int*)p->tf->esp = i;
           //push return address
           p->tf->esp -= sizeof(int);
-           *(int*)p->tf->esp = returnAdress; //adrees to the function that calls sigret 
-
-
-
-
-
-
-          p->tf->esp -= struct trapframe
-          {
-          
-          };
-          
-          
-          int sig = 1;
-          p->tf->
-          esp  -= sizeof(int);
-          
-          asm("int 64");
-          
-
+          *(int*)p->tf->esp = returnAdress; //adrees to the function that calls sigret 
+          struct sigaction * handler = (struct sigaction *)p->signal_handlers[i]; 
+          p->tf->eip = (uint)handler-> sa_handler; 
 
         }
     }
     signal_index = signal_index<<1; 
+    }
   }
-
 }
 

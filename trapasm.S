@@ -24,7 +24,7 @@ alltraps:
 .globl trapret
 
 trapret:
-  call check_for_signals
+  #call check_for_signals
   popal
   popl %gs
   popl %fs
