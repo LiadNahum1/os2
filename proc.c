@@ -125,6 +125,10 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  //add assignment 2 place for backup
+  sp -= sizeof *p->backup;
+  p->backup = (struct trapframe*)sp;
+  
   return p;
 }
 
@@ -618,6 +622,11 @@ void cont_handler(void){
     p->suspended = 0; 
 }
 
+void call_sigret(void){
+   asm("movl $24 , %eax;");
+   asm("int $64;");
+   asm("ret");
+}
 void check_for_signals(void){
   struct proc *p = myproc();
   int signal_index = 1;
@@ -637,10 +646,43 @@ void check_for_signals(void){
             kill_handler();
         }
         else{
+          int functionSize = ((int)check_for_signals - (int)call_sigret); 
+          //backup trapframe 
+          *p->backup = *p->tf;
+          //put functionn
+          p->tf->esp -= functionSize;
+          memmove(*(int*)p->tf->esp, &call_sigret, functionSize);
+          int returnAdress = p->tf->esp;
+          // push argumants
+          p->tf->esp -= sizeof i;
+          *(int*)p->tf->esp = i;
+          //push return address
+          p->tf->esp -= sizeof(int);
+           *(int*)p->tf->esp = returnAdress; //adrees to the function that calls sigret 
+
+
+
+
+
+
+          p->tf->esp -= struct trapframe
+          {
           
+          };
+          
+          
+          int sig = 1;
+          p->tf->
+          esp  -= sizeof(int);
+          
+          asm("int 64");
+          
+
+
         }
     }
     signal_index = signal_index<<1; 
   }
 
 }
+
