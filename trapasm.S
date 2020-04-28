@@ -22,6 +22,7 @@ alltraps:
 
   # Return falls through to trapret...
 .globl trapret
+.extern check_for_signals
 
 trapret:
   #call check_for_signals

@@ -50,10 +50,10 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   //add for assign2 
+  struct trapframe *backup; 
   uint pending_signals;     
   uint signal_mask;
   void* signal_handlers[32];
-  struct trapframe *backup; 
   int suspended;
 };
 
