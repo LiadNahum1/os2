@@ -12,8 +12,9 @@ void signal_handler(int signum){
 int
 main(int argc, char *argv[]){
     printf(1, "starting....\n");
-    int addr =3;
-    printf(1, "cas : %d addr: %d", cas(&addr, 3, 5), addr);
+    int* addr =malloc(sizeof(int));
+    *addr = 3; 
+    printf(1, "cas : %d addr: %d", *((int*)cas(addr, 3, 5)), *addr);
     /*int pid = getpid();
     struct sigaction* act = malloc(sizeof(struct sigaction*));
     printf(1, "malloc\n");
