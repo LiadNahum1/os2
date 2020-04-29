@@ -70,10 +70,10 @@ myproc(void)
 int allocpid(void)
 {
   int pid;
-  acquire(&ptable.lock);
-  pid = nextpid++;
-  release(&ptable.lock);
-  return pid;
+  do{
+    pid = nextpid;
+  }while (!cas(&nextpid , pid, pid+1));
+  return pid+1;
 }
 
 //PAGEBREAK: 32
@@ -380,16 +380,18 @@ void scheduler(void)
       if (p->state != RUNNABLE)
         continue;
 
+      if (!cas( &p->state , RUNNABLE , RUNNING)){
+        continue;
+      }
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
-      p->state = RUNNING;
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
+      // transform from -x to x
+      p->state = RUNNABLE;
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
@@ -427,7 +429,7 @@ void sched(void)
 void yield(void)
 {
   acquire(&ptable.lock); //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  myproc()->state = -RUNNABLE;
   sched();
   release(&ptable.lock);
 }
@@ -618,6 +620,7 @@ void sigret(void)
 {
   struct proc *p = myproc();
   *p->tf = *p->backup;
+  return;
 }
 
 void stop_handler(void)

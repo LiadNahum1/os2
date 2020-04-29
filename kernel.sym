@@ -54,10 +54,10 @@
 00000000 picirq.c
 00000000 pipe.c
 00000000 proc.c
-8010a000 first.1608
-801037c0 allocproc
+80103640 allocproc
+8010a000 first.1610
 8010a5b8 initproc
-801079c0 states.1639
+801079c0 states.1641
 00000000 sleeplock.c
 00000000 spinlock.c
 00000000 string.c
@@ -123,7 +123,7 @@
 80104c10 syscall
 8010681f vector214
 80106312 vector99
-80103730 cpuid
+80103860 cpuid
 80101a90 writei
 801064b3 vector141
 80105850 sys_fork
@@ -167,7 +167,7 @@
 801060ed vector38
 80102340 kfree
 8010693f vector238
-801036b0 mycpu
+801037e0 mycpu
 801017e0 iput
 80106453 vector133
 80106228 vector73
@@ -258,7 +258,7 @@
 80105a10 sys_sigprocmask
 80106783 vector201
 80107150 clearpteu
-80103750 myproc
+80103880 myproc
 80105af0 tvinit
 801061b3 vector60
 80106066 vector23
@@ -274,7 +274,7 @@
 80100810 consoleintr
 801040c0 kill
 8010624c vector77
-80103780 allocpid
+801038b0 allocpid
 80101540 ialloc
 80106687 vector180
 801178a4 kpgdir
@@ -336,7 +336,7 @@
 80104e60 sys_dup
 80106387 vector112
 80100390 panic
-80103640 forkret
+80103770 forkret
 8010669f vector182
 8010600b vector12
 80104870 memcmp
@@ -403,7 +403,7 @@
 8010688b vector223
 801170a0 idt
 8010684f vector218
-80103690 pinit
+801037c0 pinit
 80107000 deallocuvm
 801068a3 vector225
 80102760 lapicid
