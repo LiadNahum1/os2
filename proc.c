@@ -396,8 +396,10 @@ void scheduler(void)
         p->state = RUNNABLE;
       if (p->state == -SLEEPING)
         p->state = SLEEPING;
-      if (p->state == -ZOMBIE)
+      if (p->state == -ZOMBIE){
         p->state = ZOMBIE;
+        p->parent->state = RUNNABLE; 
+      }
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
@@ -512,7 +514,7 @@ wakeup1(void *chan)
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if (p->state == SLEEPING && p->chan == chan)
-      p->state = RUNNABLE;
+      p->state = -RUNNABLE;
 }
 
 // Wake up all processes sleeping on chan.
