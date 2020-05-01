@@ -87,18 +87,17 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-  acquire(&ptable.lock);
+  pushcli;
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if (p->state == UNUSED)
+    if(cas(&p->state, UNUSED, EMBRYO))
       goto found;
 
-  release(&ptable.lock);
+  popcli;
   return 0;
 
 found:
-  p->state = EMBRYO;
-  release(&ptable.lock);
+  popcli;
 
   p->pid = allocpid();
 
@@ -170,11 +169,11 @@ void userinit(void)
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
-  acquire(&ptable.lock);
-
+  pushcli;
+  
   p->state = RUNNABLE;
 
-  release(&ptable.lock);
+  popcli;
 }
 
 // Grow current process's memory by n bytes.
@@ -249,11 +248,11 @@ int fork(void)
     np->signal_handlers[i] = curproc->signal_handlers[i];
   }
 
-  acquire(&ptable.lock);
+  pushcli;
 
   np->state = RUNNABLE;
 
-  release(&ptable.lock);
+  popcli;
 
   return pid;
 }
@@ -296,7 +295,7 @@ void exit(void)
     if (p->parent == curproc)
     {
       p->parent = initproc;
-      if (p->state == ZOMBIE)
+      if (p->state == ZOMBIE || p->state == -ZOMBIE)
         wakeup1(initproc);
     }
   }
@@ -513,7 +512,7 @@ wakeup1(void *chan)
   struct proc *p;
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if (p->state == SLEEPING && p->chan == chan)
+    if ((p->state == SLEEPING || p->state == -SLEEPING) && p->chan == chan)
       p->state = -RUNNABLE;
 }
 
@@ -593,7 +592,7 @@ void procdump(void)
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
-    if (p->state == SLEEPING)
+    if (p->state == SLEEPING || p->state == -SLEEPING )
     {
       getcallerpcs((uint *)p->context->ebp + 2, pc);
       for (i = 0; i < 10 && pc[i] != 0; i++)
