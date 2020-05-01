@@ -285,7 +285,7 @@ void exit(void)
   end_op();
   curproc->cwd = 0;
 
-  acquire(&ptable.lock);
+  pushcli;
 
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
@@ -302,7 +302,7 @@ void exit(void)
   }
 
   // Jump into the scheduler, never to return.
-  curproc->state = ZOMBIE;
+  curproc->state = -ZOMBIE;
   sched();
   panic("zombie exit");
 }
@@ -315,7 +315,7 @@ int wait(void)
   int havekids, pid;
   struct proc *curproc = myproc();
 
-  acquire(&ptable.lock);
+  pushcli;
   for (;;)
   {
     // Scan through table looking for exited children.
@@ -337,7 +337,7 @@ int wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        release(&ptable.lock);
+        popcli;
         return pid;
       }
     }
@@ -345,7 +345,7 @@ int wait(void)
     // No point waiting if we don't have any children.
     if (!havekids || curproc->killed)
     {
-      release(&ptable.lock);
+      popcli;
       return -1;
     }
 
@@ -374,7 +374,7 @@ void scheduler(void)
     sti();
 
     // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
+    pushcli;
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if (p->state != RUNNABLE)
@@ -390,13 +390,20 @@ void scheduler(void)
       switchuvm(p);
       swtch(&(c->scheduler), p->context);
       switchkvm();
+
       // transform from -x to x
-      p->state = RUNNABLE;
+      if (p->state == -RUNNABLE)
+        p->state = RUNNABLE;
+      if (p->state == -SLEEPING)
+        p->state = SLEEPING;
+      if (p->state == -ZOMBIE)
+        p->state = ZOMBIE;
+
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
-    release(&ptable.lock);
+    popcli;
   }
 }
 
@@ -428,10 +435,10 @@ void sched(void)
 // Give up the CPU for one scheduling round.
 void yield(void)
 {
-  acquire(&ptable.lock); //DOC: yieldlock
+  pushcli; 
   myproc()->state = -RUNNABLE;
   sched();
-  release(&ptable.lock);
+  popcli; 
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -474,13 +481,13 @@ void sleep(void *chan, struct spinlock *lk)
   // (wakeup runs with ptable.lock locked),
   // so it's okay to release lk.
   if (lk != &ptable.lock)
-  {                        //DOC: sleeplock0
-    acquire(&ptable.lock); //DOC: sleeplock1
+  { 
+    pushcli;                       //DOC: sleeplock0
     release(lk);
   }
   // Go to sleep.
   p->chan = chan;
-  p->state = SLEEPING;
+  p->state = -SLEEPING;
 
   sched();
 
@@ -489,8 +496,8 @@ void sleep(void *chan, struct spinlock *lk)
 
   // Reacquire original lock.
   if (lk != &ptable.lock)
-  { //DOC: sleeplock2
-    release(&ptable.lock);
+  { 
+    popcli;
     acquire(lk);
   }
 }
@@ -511,9 +518,9 @@ wakeup1(void *chan)
 // Wake up all processes sleeping on chan.
 void wakeup(void *chan)
 {
-  acquire(&ptable.lock);
+  pushcli;
   wakeup1(chan);
-  release(&ptable.lock);
+  popcli;
 }
 
 // Kill the process with the given pid.
