@@ -87,17 +87,17 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-  pushcli;
+  pushcli();
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(cas(&p->state, UNUSED, EMBRYO))
       goto found;
 
-  popcli;
+  popcli();
   return 0;
 
 found:
-  popcli;
+  popcli();
 
   p->pid = allocpid();
 
@@ -169,11 +169,11 @@ void userinit(void)
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
-  pushcli;
+  pushcli();
   
   p->state = RUNNABLE;
 
-  popcli;
+  popcli();
 }
 
 // Grow current process's memory by n bytes.
@@ -248,11 +248,11 @@ int fork(void)
     np->signal_handlers[i] = curproc->signal_handlers[i];
   }
 
-  pushcli;
+  pushcli();
 
   np->state = RUNNABLE;
 
-  popcli;
+  popcli();
 
   return pid;
 }
@@ -284,7 +284,7 @@ void exit(void)
   end_op();
   curproc->cwd = 0;
 
-  pushcli;
+  pushcli();
 
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
@@ -314,7 +314,7 @@ int wait(void)
   int havekids, pid;
   struct proc *curproc = myproc();
 
-  pushcli;
+  pushcli();
   for (;;)
   {
     // Scan through table looking for exited children.
@@ -336,7 +336,7 @@ int wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        popcli;
+        popcli();
         return pid;
       }
     }
@@ -344,7 +344,7 @@ int wait(void)
     // No point waiting if we don't have any children.
     if (!havekids || curproc->killed)
     {
-      popcli;
+      popcli();
       return -1;
     }
 
@@ -373,7 +373,7 @@ void scheduler(void)
     sti();
 
     // Loop over process table looking for process to run.
-    pushcli;
+    pushcli();
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if (p->state != RUNNABLE)
@@ -404,7 +404,7 @@ void scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
-    popcli;
+    popcli();
   }
 }
 
@@ -436,10 +436,10 @@ void sched(void)
 // Give up the CPU for one scheduling round.
 void yield(void)
 {
-  pushcli; 
+  pushcli(); 
   myproc()->state = -RUNNABLE;
   sched();
-  popcli; 
+  popcli(); 
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -483,7 +483,7 @@ void sleep(void *chan, struct spinlock *lk)
   // so it's okay to release lk.
   if (lk != &ptable.lock)
   { 
-    pushcli;                       //DOC: sleeplock0
+    pushcli();                       //DOC: sleeplock0
     release(lk);
   }
   // Go to sleep.
@@ -498,7 +498,7 @@ void sleep(void *chan, struct spinlock *lk)
   // Reacquire original lock.
   if (lk != &ptable.lock)
   { 
-    popcli;
+    popcli();
     acquire(lk);
   }
 }
@@ -519,9 +519,9 @@ wakeup1(void *chan)
 // Wake up all processes sleeping on chan.
 void wakeup(void *chan)
 {
-  pushcli;
+  pushcli();
   wakeup1(chan);
-  popcli;
+  popcli();
 }
 
 // Kill the process with the given pid.
