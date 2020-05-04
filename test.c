@@ -1,4 +1,4 @@
-#include "types.h"
+/*#include "types.h"
 #include "stat.h"
 #include "user.h"
 
@@ -23,9 +23,9 @@ main(int argc, char *argv[]){
     printf(1, "kill %d",   kill(pid, 6));
     printf(1, "after sig handler");
     exit();
-}
+}*/
 
-/*
+
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -41,7 +41,7 @@ main(int argc, char **argv)
   int signum = 4;
   struct sigaction handler;
 
-  if (child == 0) {
+  /*if (child == 0) {
   	while(1) {
 		printf(1, "CHILD\n");
 		sleep(100);  		
@@ -60,7 +60,8 @@ main(int argc, char **argv)
   	wait();
   }
 
-  child = fork();
+
+  child = fork();*/
   if (child == 0) {
 
   	handler.sa_handler = &some_handler;
@@ -86,7 +87,7 @@ main(int argc, char **argv)
 
   exit();
 }
-*/
+
 /*
 
     

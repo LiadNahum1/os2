@@ -375,6 +375,15 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
+      //check if p is suspended and has SIGCOUNT
+      if(p->suspended){
+          if((p->pending_signals & 1<<SIGCONT) == 1<<SIGCONT){
+            p->suspended = 0; 
+            p->pending_signals = p->pending_signals & (~(1<<SIGCONT));
+          }
+          else
+            continue; 
+      } 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -608,9 +617,7 @@ int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact
     if (oldact != null){
       *oldact = p->signal_handlers[signum];
     }
-    cprintf("in sigaction %d", signum);
     p->signal_handlers[signum].sa_handler = act->sa_handler;
-    cprintf("sa handler %d", p->signal_handlers[signum].sa_handler);
     p->signal_handlers[signum].sigmask = act->sigmask;
     
     return 0;
@@ -624,7 +631,8 @@ void sigret(void){
 
 void stop_handler(void){
   struct proc *p = myproc();
-  p->suspended = 1; 
+  p->suspended = 1;
+  yield(); 
 }
 
 void cont_handler(void){
@@ -685,18 +693,14 @@ void check_for_signals(void){
     is_blocked = (p->signal_mask & signal_index) == signal_index; //check if signal is blocked 
     //check if signal's flag is on and it is not blocked 
     if(((p->pending_signals & signal_index) == signal_index) & !is_blocked){
-      cprintf("%d %d\n", p->pending_signals, i);
       p->pending_signals = p->pending_signals & (~signal_index); //discard signal
-      cprintf("%d", p->pending_signals);
       if(p->signal_handlers[i].sa_handler != (void*)SIG_IGN){
         if (p->signal_handlers[i].sa_handler == SIG_DFL){
-            cprintf("default %d", i);
           default_handlers(i);
         }
        
         else{
           p->already_in_signal = 1; 
-          cprintf("not %d", i);
           user_handlers(i, p);
         }      
      }
