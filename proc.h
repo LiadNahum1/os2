@@ -51,9 +51,10 @@ struct proc {
   char name[16];               // Process name (debugging)
   //add for assign2 
   struct trapframe *backup; 
+  int already_in_signal;
   uint pending_signals;     
   uint signal_mask;
-  void* signal_handlers[32];
+  struct sigaction signal_handlers[32];
   int suspended;
 };
 

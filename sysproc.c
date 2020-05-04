@@ -106,18 +106,18 @@ int
  int
  sys_sigaction(void){
    int signum;
-   struct sigaction *act;
-   struct sigaction *oldact;
+   char *act;
+   char *oldact;
 
   if(argint(0, &signum) < 0)
     return -1;
-  if(argptr(1, (char**) &act, sizeof(struct sigaction)) < 0)
+  if(argptr(1, &act, sizeof(struct sigaction)) < 0)
     return -1;
   
-  if(argptr(1, (char**)  &oldact, sizeof(struct sigaction)) < 0)
+  if(argptr(2, &oldact, sizeof(struct sigaction)) < 0)
     return -1;
   
-  return sigaction(signum,act, oldact);
+  return sigaction(signum,(struct sigaction *)act, (struct sigaction *)oldact);
  }
 
  int

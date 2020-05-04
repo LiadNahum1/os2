@@ -103,8 +103,8 @@ exec(char *path, char **argv)
   //add assign2
   //return all signal handlers to default except SIG_IGN 
   for(int i=0; i<32; i++){
-    if ((int)curproc->signal_handlers[i] != SIG_IGN)
-      curproc->signal_handlers[i] = SIG_DFL;
+    if ((int)curproc->signal_handlers[i].sa_handler != SIG_IGN)
+      curproc->signal_handlers[i].sa_handler = SIG_DFL;
   }
 
   switchuvm(curproc);

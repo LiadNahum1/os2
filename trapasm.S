@@ -22,10 +22,21 @@ alltraps:
 
   # Return falls through to trapret...
 .globl trapret
-.extern check_for_signals
+.globl trapret_handler
 
 trapret:
-  #call check_for_signals
+  call check_for_signals
+  popal
+  popl %gs
+  popl %fs
+  popl %es
+  popl %ds
+  addl $0x8, %esp  # trapno and errcode
+  iret
+
+trapret_handler:
+  popl %eax 
+  popl %esp
   popal
   popl %gs
   popl %fs
