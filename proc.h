@@ -51,11 +51,12 @@ struct proc {
   char name[16];               // Process name (debugging)
   //add for assign2 
   struct trapframe *backup; 
-  int already_in_signal;
   uint pending_signals;     
   uint signal_mask;
+  uint signal_mask_backup;
   struct sigaction signal_handlers[32];
   int suspended;
+  int already_in_signal;
 };
 
 // Process memory is laid out contiguously, low addresses first:

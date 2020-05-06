@@ -128,7 +128,15 @@ found:
 
   //add assignment 2 place for backup
   p->backup = (struct trapframe*)kalloc();
-  //initialize signal_handlers TODO
+  //initialize handlers to be default  
+  for(int i=0; i<32; i++){
+    p->signal_handlers[i].sa_handler = SIG_DFL;
+    p->signal_handlers[i].sigmask = 0;
+  }
+  p->pending_signals =0;
+  p->signal_mask = 0;
+  p->signal_mask_backup = 0;
+  p->suspended =0;
   p->already_in_signal = 0;
   return p;
 }
@@ -162,14 +170,6 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
-  p->signal_mask = 0;
-  p->pending_signals =0;
-  p->suspended =0;
-   //initialize handlers to be default  
-  for(int i=0; i<32; i++){
-    p->signal_handlers[i].sa_handler = SIG_DFL;
-  }
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -241,11 +241,8 @@ fork(void)
 
   pid = np->pid;
 
+  //copy signal handlers and signal mask from parent 
   np->signal_mask = curproc->signal_mask;
-  np->pending_signals = 0; 
-  np->suspended = 0;
-  //copy signal handlers from parent 
-  
   for(int i=0; i<32; i++){
     np->signal_handlers[i] = curproc->signal_handlers[i];
   }
@@ -548,22 +545,6 @@ void kill_handler(void){
   struct proc *p = myproc();
   p->killed = 1;
 }
-/*
-struct proc *p;
- acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->pid == pid){
-      p->killed = 1;
-      // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
-        p->state = RUNNABLE;
-      release(&ptable.lock);
-      return 0;
-    }
-  }
-  release(&ptable.lock);
-  return -1;
-}*/
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
@@ -604,6 +585,11 @@ procdump(void)
 
 uint sigprocmask (uint sigmask){
   struct proc *p = myproc();
+  if (((sigmask & 1<<SIGSTOP) == 1<<SIGSTOP))
+    return -1; 
+  if (((sigmask & 1<<SIGKILL) == 1<<SIGKILL))
+    return -1; 
+
   uint oldmask = p->signal_mask;
   p->signal_mask = sigmask;
   return oldmask;
@@ -613,7 +599,6 @@ int sigaction(int signum , const struct sigaction *act, struct sigaction *oldact
     struct proc *p = myproc();
     if (signum > 31 || signum < 0 || signum == SIGSTOP || signum == SIGKILL)
       return -1;
-      //TODO filx oldact
     if (oldact != null){
       *oldact = p->signal_handlers[signum];
     }
@@ -627,6 +612,8 @@ void sigret(void){
   struct proc *p = myproc();
   *p->tf = *p->backup; 
    p->already_in_signal = 0;
+   p->signal_mask = p->signal_mask_backup;
+       
 }
 
 void stop_handler(void){
@@ -695,8 +682,25 @@ void check_for_signals(void){
     if(((p->pending_signals & signal_index) == signal_index) & !is_blocked){
       p->pending_signals = p->pending_signals & (~signal_index); //discard signal
       if(p->signal_handlers[i].sa_handler != (void*)SIG_IGN){
+        p->signal_mask_backup = p->signal_mask;
+        p->signal_mask = p->signal_handlers[i].sigmask;
         if (p->signal_handlers[i].sa_handler == SIG_DFL){
           default_handlers(i);
+          p->signal_mask = p->signal_mask_backup;
+        }
+        else if ((int)p->signal_handlers[i].sa_handler == SIGSTOP){
+          stop_handler();
+          p->signal_mask = p->signal_mask_backup;
+        }
+
+        else if ((int)p->signal_handlers[i].sa_handler == SIGKILL){
+          kill_handler();
+          p->signal_mask = p->signal_mask_backup;
+        }
+
+        else if ((int)p->signal_handlers[i].sa_handler == SIGCONT){
+          cont_handler();
+          p->signal_mask = p->signal_mask_backup;
         }
        
         else{

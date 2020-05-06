@@ -122,6 +122,7 @@ int
 
  int
  sys_sigret(void){
+   sigret();
    return 0;
  }
  
