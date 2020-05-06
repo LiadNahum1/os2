@@ -157,7 +157,7 @@ static inline int cas (volatile void * addr, int expected, int newval)
               : "r" (expected), "r" (newval)
               : "%eax"
               );
-  return ret;
+  return ret>>6;
 }
  
 //PAGEBREAK: 36
