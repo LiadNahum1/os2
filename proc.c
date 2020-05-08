@@ -286,8 +286,10 @@ exit(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
-      if(p->state == ZOMBIE || p->state == -ZOMBIE)
+      if(p->state == ZOMBIE || p->state == -ZOMBIE){
+        while(p->state == -ZOMBIE);
         wakeup1(initproc);
+      }
     }
   }
 
@@ -314,7 +316,8 @@ wait(void)
       if(p->parent != curproc)
         continue;
       havekids = 1;
-      if(p->state == ZOMBIE){
+      if(p->state == ZOMBIE || p->state == -ZOMBIE){
+        while(p->state == -ZOMBIE); // need to wait antil it zombie so i will not realse before done turning states
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
@@ -395,14 +398,15 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       
        // transform from -x to x
-      if (p->state == -RUNNABLE)
-        p->state = RUNNABLE;
-      if (p->state == -SLEEPING)
-        p->state = SLEEPING;
+      cas( &p->state , -RUNNABLE , RUNNABLE);
+      cas( &p->state , -SLEEPING , SLEEPING);
+      cas( &p->state , -ZOMBIE , ZOMBIE);
+      /*
       if (p->state == -ZOMBIE){
         p->state = ZOMBIE;
         p->parent->state = RUNNABLE; 
       }
+      */
       c->proc = 0;
     }
     popcli();
