@@ -35,8 +35,8 @@ trapret:
   iret
 
 trapret_handler:
-  popl %eax 
-  popl %esp
+  popl %eax  #return address of call trapret_handler 
+  popl %esp  #trapframe
   popal
   popl %gs
   popl %fs

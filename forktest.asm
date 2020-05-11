@@ -5,6 +5,12 @@ _forktest:     file format elf32-i386
 Disassembly of section .text:
 
 00000000 <main>:
+  printf(1, "fork test OK\n");
+}
+
+int
+main(void)
+{
    0:	8d 4c 24 04          	lea    0x4(%esp),%ecx
    4:	83 e4 f0             	and    $0xfffffff0,%esp
    7:	ff 71 fc             	pushl  -0x4(%ecx)
@@ -12,18 +18,22 @@ Disassembly of section .text:
    b:	89 e5                	mov    %esp,%ebp
    d:	51                   	push   %ecx
    e:	83 ec 04             	sub    $0x4,%esp
+  forktest();
   11:	e8 3a 00 00 00       	call   50 <forktest>
+  exit();
   16:	e8 87 03 00 00       	call   3a2 <exit>
   1b:	66 90                	xchg   %ax,%ax
   1d:	66 90                	xchg   %ax,%ax
   1f:	90                   	nop
 
 00000020 <printf>:
+{
   20:	55                   	push   %ebp
   21:	89 e5                	mov    %esp,%ebp
   23:	53                   	push   %ebx
   24:	83 ec 10             	sub    $0x10,%esp
   27:	8b 5d 0c             	mov    0xc(%ebp),%ebx
+  write(fd, s, strlen(s));
   2a:	53                   	push   %ebx
   2b:	e8 a0 01 00 00       	call   1d0 <strlen>
   30:	83 c4 0c             	add    $0xc,%esp
@@ -31,6 +41,7 @@ Disassembly of section .text:
   34:	53                   	push   %ebx
   35:	ff 75 08             	pushl  0x8(%ebp)
   38:	e8 85 03 00 00       	call   3c2 <write>
+}
   3d:	83 c4 10             	add    $0x10,%esp
   40:	8b 5d fc             	mov    -0x4(%ebp),%ebx
   43:	c9                   	leave  
@@ -39,11 +50,15 @@ Disassembly of section .text:
   49:	8d bc 27 00 00 00 00 	lea    0x0(%edi,%eiz,1),%edi
 
 00000050 <forktest>:
+{
   50:	55                   	push   %ebp
   51:	89 e5                	mov    %esp,%ebp
   53:	53                   	push   %ebx
+  for(n=0; n<N; n++){
   54:	31 db                	xor    %ebx,%ebx
+{
   56:	83 ec 10             	sub    $0x10,%esp
+  write(fd, s, strlen(s));
   59:	68 5c 04 00 00       	push   $0x45c
   5e:	e8 6d 01 00 00       	call   1d0 <strlen>
   63:	83 c4 0c             	add    $0xc,%esp
@@ -55,24 +70,33 @@ Disassembly of section .text:
   76:	eb 19                	jmp    91 <forktest+0x41>
   78:	90                   	nop
   79:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+    if(pid == 0)
   80:	0f 84 7c 00 00 00    	je     102 <forktest+0xb2>
+  for(n=0; n<N; n++){
   86:	83 c3 01             	add    $0x1,%ebx
   89:	81 fb e8 03 00 00    	cmp    $0x3e8,%ebx
   8f:	74 4f                	je     e0 <forktest+0x90>
+    pid = fork();
   91:	e8 04 03 00 00       	call   39a <fork>
+    if(pid < 0)
   96:	85 c0                	test   %eax,%eax
   98:	79 e6                	jns    80 <forktest+0x30>
+  for(; n > 0; n--){
   9a:	85 db                	test   %ebx,%ebx
   9c:	74 10                	je     ae <forktest+0x5e>
   9e:	66 90                	xchg   %ax,%ax
+    if(wait() < 0){
   a0:	e8 05 03 00 00       	call   3aa <wait>
   a5:	85 c0                	test   %eax,%eax
   a7:	78 5e                	js     107 <forktest+0xb7>
+  for(; n > 0; n--){
   a9:	83 eb 01             	sub    $0x1,%ebx
   ac:	75 f2                	jne    a0 <forktest+0x50>
+  if(wait() != -1){
   ae:	e8 f7 02 00 00       	call   3aa <wait>
   b3:	83 f8 ff             	cmp    $0xffffffff,%eax
   b6:	75 71                	jne    129 <forktest+0xd9>
+  write(fd, s, strlen(s));
   b8:	83 ec 0c             	sub    $0xc,%esp
   bb:	68 8e 04 00 00       	push   $0x48e
   c0:	e8 0b 01 00 00       	call   1d0 <strlen>
@@ -81,10 +105,12 @@ Disassembly of section .text:
   c9:	68 8e 04 00 00       	push   $0x48e
   ce:	6a 01                	push   $0x1
   d0:	e8 ed 02 00 00       	call   3c2 <write>
+}
   d5:	8b 5d fc             	mov    -0x4(%ebp),%ebx
   d8:	c9                   	leave  
   d9:	c3                   	ret    
   da:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
+  write(fd, s, strlen(s));
   e0:	83 ec 0c             	sub    $0xc,%esp
   e3:	68 9c 04 00 00       	push   $0x49c
   e8:	e8 e3 00 00 00       	call   1d0 <strlen>
@@ -93,8 +119,11 @@ Disassembly of section .text:
   f1:	68 9c 04 00 00       	push   $0x49c
   f6:	6a 01                	push   $0x1
   f8:	e8 c5 02 00 00       	call   3c2 <write>
+    exit();
   fd:	e8 a0 02 00 00       	call   3a2 <exit>
+      exit();
  102:	e8 9b 02 00 00       	call   3a2 <exit>
+  write(fd, s, strlen(s));
  107:	83 ec 0c             	sub    $0xc,%esp
  10a:	68 67 04 00 00       	push   $0x467
  10f:	e8 bc 00 00 00       	call   1d0 <strlen>
@@ -103,7 +132,9 @@ Disassembly of section .text:
  118:	68 67 04 00 00       	push   $0x467
  11d:	6a 01                	push   $0x1
  11f:	e8 9e 02 00 00       	call   3c2 <write>
+      exit();
  124:	e8 79 02 00 00       	call   3a2 <exit>
+  write(fd, s, strlen(s));
  129:	83 ec 0c             	sub    $0xc,%esp
  12c:	68 7b 04 00 00       	push   $0x47b
  131:	e8 9a 00 00 00       	call   1d0 <strlen>
@@ -112,6 +143,7 @@ Disassembly of section .text:
  13a:	68 7b 04 00 00       	push   $0x47b
  13f:	6a 01                	push   $0x1
  141:	e8 7c 02 00 00       	call   3c2 <write>
+    exit();
  146:	e8 57 02 00 00       	call   3a2 <exit>
  14b:	66 90                	xchg   %ax,%ax
  14d:	66 90                	xchg   %ax,%ax
@@ -505,121 +537,150 @@ memmove(void *vdst, const void *vsrc, int n)
  399:	c3                   	ret    
 
 0000039a <fork>:
+  name: \
+    movl $SYS_ ## name, %eax; \
+    int $T_SYSCALL; \
+    ret
+
+SYSCALL(fork)
  39a:	b8 01 00 00 00       	mov    $0x1,%eax
  39f:	cd 40                	int    $0x40
  3a1:	c3                   	ret    
 
 000003a2 <exit>:
+SYSCALL(exit)
  3a2:	b8 02 00 00 00       	mov    $0x2,%eax
  3a7:	cd 40                	int    $0x40
  3a9:	c3                   	ret    
 
 000003aa <wait>:
+SYSCALL(wait)
  3aa:	b8 03 00 00 00       	mov    $0x3,%eax
  3af:	cd 40                	int    $0x40
  3b1:	c3                   	ret    
 
 000003b2 <pipe>:
+SYSCALL(pipe)
  3b2:	b8 04 00 00 00       	mov    $0x4,%eax
  3b7:	cd 40                	int    $0x40
  3b9:	c3                   	ret    
 
 000003ba <read>:
+SYSCALL(read)
  3ba:	b8 05 00 00 00       	mov    $0x5,%eax
  3bf:	cd 40                	int    $0x40
  3c1:	c3                   	ret    
 
 000003c2 <write>:
+SYSCALL(write)
  3c2:	b8 10 00 00 00       	mov    $0x10,%eax
  3c7:	cd 40                	int    $0x40
  3c9:	c3                   	ret    
 
 000003ca <close>:
+SYSCALL(close)
  3ca:	b8 15 00 00 00       	mov    $0x15,%eax
  3cf:	cd 40                	int    $0x40
  3d1:	c3                   	ret    
 
 000003d2 <kill>:
+SYSCALL(kill)
  3d2:	b8 06 00 00 00       	mov    $0x6,%eax
  3d7:	cd 40                	int    $0x40
  3d9:	c3                   	ret    
 
 000003da <exec>:
+SYSCALL(exec)
  3da:	b8 07 00 00 00       	mov    $0x7,%eax
  3df:	cd 40                	int    $0x40
  3e1:	c3                   	ret    
 
 000003e2 <open>:
+SYSCALL(open)
  3e2:	b8 0f 00 00 00       	mov    $0xf,%eax
  3e7:	cd 40                	int    $0x40
  3e9:	c3                   	ret    
 
 000003ea <mknod>:
+SYSCALL(mknod)
  3ea:	b8 11 00 00 00       	mov    $0x11,%eax
  3ef:	cd 40                	int    $0x40
  3f1:	c3                   	ret    
 
 000003f2 <unlink>:
+SYSCALL(unlink)
  3f2:	b8 12 00 00 00       	mov    $0x12,%eax
  3f7:	cd 40                	int    $0x40
  3f9:	c3                   	ret    
 
 000003fa <fstat>:
+SYSCALL(fstat)
  3fa:	b8 08 00 00 00       	mov    $0x8,%eax
  3ff:	cd 40                	int    $0x40
  401:	c3                   	ret    
 
 00000402 <link>:
+SYSCALL(link)
  402:	b8 13 00 00 00       	mov    $0x13,%eax
  407:	cd 40                	int    $0x40
  409:	c3                   	ret    
 
 0000040a <mkdir>:
+SYSCALL(mkdir)
  40a:	b8 14 00 00 00       	mov    $0x14,%eax
  40f:	cd 40                	int    $0x40
  411:	c3                   	ret    
 
 00000412 <chdir>:
+SYSCALL(chdir)
  412:	b8 09 00 00 00       	mov    $0x9,%eax
  417:	cd 40                	int    $0x40
  419:	c3                   	ret    
 
 0000041a <dup>:
+SYSCALL(dup)
  41a:	b8 0a 00 00 00       	mov    $0xa,%eax
  41f:	cd 40                	int    $0x40
  421:	c3                   	ret    
 
 00000422 <getpid>:
+SYSCALL(getpid)
  422:	b8 0b 00 00 00       	mov    $0xb,%eax
  427:	cd 40                	int    $0x40
  429:	c3                   	ret    
 
 0000042a <sbrk>:
+SYSCALL(sbrk)
  42a:	b8 0c 00 00 00       	mov    $0xc,%eax
  42f:	cd 40                	int    $0x40
  431:	c3                   	ret    
 
 00000432 <sleep>:
+SYSCALL(sleep)
  432:	b8 0d 00 00 00       	mov    $0xd,%eax
  437:	cd 40                	int    $0x40
  439:	c3                   	ret    
 
 0000043a <uptime>:
+SYSCALL(uptime)
  43a:	b8 0e 00 00 00       	mov    $0xe,%eax
  43f:	cd 40                	int    $0x40
  441:	c3                   	ret    
 
 00000442 <sigprocmask>:
+SYSCALL(sigprocmask)
  442:	b8 16 00 00 00       	mov    $0x16,%eax
  447:	cd 40                	int    $0x40
  449:	c3                   	ret    
 
 0000044a <sigaction>:
+SYSCALL(sigaction)
  44a:	b8 17 00 00 00       	mov    $0x17,%eax
  44f:	cd 40                	int    $0x40
  451:	c3                   	ret    
 
 00000452 <sigret>:
+SYSCALL(sigret)
  452:	b8 18 00 00 00       	mov    $0x18,%eax
  457:	cd 40                	int    $0x40
  459:	c3                   	ret    

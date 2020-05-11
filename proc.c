@@ -367,17 +367,6 @@ scheduler(void)
     // Loop over process table looking for process to run.
     pushcli();
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-
-      //check if p is suspended and has SIGCOUNT
-      if(p->suspended){
-          if((p->pending_signals & 1<<SIGCONT) == 1<<SIGCONT){
-            p->suspended = 0; 
-            p->pending_signals = p->pending_signals & (~(1<<SIGCONT));
-          }
-          else
-            continue; 
-      } 
-
       int result = cas( &p->state , RUNNABLE , RUNNING);
       if (!result)
         continue;    
@@ -654,18 +643,9 @@ void call_sigret(void){
    asm("int $64;");
 }
 
-void default_handlers(int i){
-  if(i == SIGCONT)
-    cont_handler();
-  else if(i==SIGSTOP)
-    stop_handler();
-  else
-    kill_handler();
-
-}
 
 void user_handlers(int i, struct proc * p){
-    int functionSize = ((int)default_handlers - (int)call_sigret); 
+    int functionSize = ((int)user_handlers - (int)call_sigret); 
     //backup trapframe 
     *p->backup = *p->tf;
 
@@ -686,10 +666,50 @@ void user_handlers(int i, struct proc * p){
 
 }
 
+void return_from_sig_stop_handler(void){
+  struct proc *p = myproc();
+  if (p == 0)
+    return; 
+  int signal_index_in_stop;
+  int is_blocked_in_stop;
+  //check if p is suspended and has SIGCOUNT
+  while(p->suspended){
+    for(int j=0; j<32; j=j+1){
+      signal_index_in_stop = 1<<j; 
+      is_blocked_in_stop = (p->signal_mask & signal_index_in_stop) == signal_index_in_stop;
+      if(((p->pending_signals & signal_index_in_stop) == signal_index_in_stop) & !is_blocked_in_stop ){
+        if((j == SIGCONT) || ((int)p->signal_handlers[j].sa_handler == SIGCONT)){
+            cont_handler();
+            p->pending_signals = p->pending_signals & (~signal_index_in_stop); //discard signal
+        }
+        else if((j == SIGKILL) || ((int)p->signal_handlers[j].sa_handler == SIGKILL)){
+            kill_handler();
+            p->suspended = 0;
+            p->pending_signals = p->pending_signals & (~signal_index_in_stop); //discard signal
+        }
+      }
+    }
+    if(p->suspended)
+    yield();
+  }
+}
+
+void default_handlers(int i){
+  if(i == SIGCONT)
+    cont_handler();
+  else if(i==SIGSTOP){
+    stop_handler();
+    return_from_sig_stop_handler();
+  }
+  else
+    kill_handler();
+}
+
 void check_for_signals(void){
   struct proc *p = myproc();
   if (p == 0)
     return; 
+
   if(p->already_in_signal)
     return; 
 
@@ -712,8 +732,10 @@ void check_for_signals(void){
         else if ((int)p->signal_handlers[i].sa_handler == SIGSTOP){
           stop_handler();
           p->signal_mask = p->signal_mask_backup;
+           //TODO CHECK WITH LISHAY 
+          return_from_sig_stop_handler();
+          //TODO CHECK WITH LISHAY          
         }
-
         else if ((int)p->signal_handlers[i].sa_handler == SIGKILL){
           kill_handler();
           p->signal_mask = p->signal_mask_backup;
@@ -731,4 +753,8 @@ void check_for_signals(void){
      }
     }
   }
+
+
 }
+
+  
