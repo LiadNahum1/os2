@@ -71,9 +71,12 @@ int
 allocpid(void) 
 {
    int pid;
+   pushcli(); //add now
   do{
     pid = nextpid;
+     
   }while (!cas(&nextpid , pid, pid+1));
+  popcli(); 
   return pid+1;
 }
 
@@ -122,7 +125,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
-  //add assignment 2 place for backup
+  //add assignment 2 
   p->backup = (struct trapframe*)kalloc();
   //initialize handlers to be default  
   for(int i=0; i<32; i++){
@@ -134,11 +137,10 @@ found:
   p->signal_mask_backup = 0;
   p->suspended =0;
   p->already_in_signal = 0;
+  p->in_wait =0;
+  p->parent_in_wait =0;
   return p;
 }
-
-
-
 
 //PAGEBREAK: 32
 // Set up first user process.
@@ -173,7 +175,8 @@ userinit(void)
   // because the assignment might not be atomic.
   pushcli();
   
-  p->state = RUNNABLE;
+  //p->state = RUNNABLE;
+  cas(&p->state, EMBRYO, RUNNABLE);
   popcli();
 }
 
@@ -244,8 +247,8 @@ fork(void)
 
   pushcli();
 
-  np->state = RUNNABLE;
-
+  //np->state = RUNNABLE;
+  cas(&np->state, EMBRYO, RUNNABLE);
   popcli();
 
   return pid;
@@ -279,6 +282,12 @@ exit(void)
 
   pushcli();
 
+  // Jump into the scheduler, never to return.
+ 
+  cas(&curproc->state, RUNNING, -ZOMBIE);
+
+  //add now
+
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
@@ -294,9 +303,35 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
-  curproc->state = -ZOMBIE;
+  //curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
+/*
+  do{
+    if((!curproc->parent->in_wait) || (curproc->parent_in_wait) ){
+      // Parent might be sleeping in wait().
+       //cprintf("in do while in_wait %d parent_in_wait %d!!!!!",curproc->parent->in_wait, curproc->parent_in_wait );
+      wakeup1(curproc->parent);
+      
+       // Pass abandoned children to init.
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->parent == curproc){
+          p->parent = initproc;
+          if(p->state == ZOMBIE || p->state == -ZOMBIE){
+            //while(p->state == -ZOMBIE){cprintf("in exit -ZOMBIE");};
+            wakeup1(initproc);
+          }
+        }
+      }
+    } 
+      //cprintf("in do while not good!!!!!",curproc->parent->in_wait, curproc->parent_in_wait );
+     
+
+  }while((!cas(&curproc->parent->in_wait, 0,0)) && (!curproc->parent_in_wait));
+
+  sched();
+  panic("zombie exit");
+  */
 }
 
 // Wait for a child process to exit and return its pid.
@@ -312,12 +347,19 @@ wait(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
+    //curproc->in_wait =1;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE || p->state == -ZOMBIE){
-        while(p->state == -ZOMBIE); // need to wait antil it zombie so i will not realse before done turning states
+        while(p->state == -ZOMBIE){ // need to wait antil it zombie so i will not realse before done turning states
+          //p->parent_in_wait = 1;
+           //cprintf("in wait -ZOMBIE!!!!!");
+      
+        }
+        //p->parent_in_wait =0;
+
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
@@ -327,9 +369,11 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->state = UNUSED;
+        //p->state = UNUSED;
+        cas(&p->state, ZOMBIE, UNUSED);
         kfree((char *)p->backup);
         popcli();
+        curproc->in_wait =0;
         return pid;
       }
     }
@@ -367,6 +411,8 @@ scheduler(void)
     // Loop over process table looking for process to run.
     pushcli();
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       //cprintf("in scheduler %d!!!!!", p->state );
+     
       int result = cas( &p->state , RUNNABLE , RUNNING);
       if (!result)
         continue;    
@@ -390,12 +436,7 @@ scheduler(void)
       cas( &p->state , -RUNNABLE , RUNNABLE);
       cas( &p->state , -SLEEPING , SLEEPING);
       cas( &p->state , -ZOMBIE , ZOMBIE);
-      /*
-      if (p->state == -ZOMBIE){
-        p->state = ZOMBIE;
-        p->parent->state = RUNNABLE; 
-      }
-      */
+    
       c->proc = 0;
     }
     popcli();
@@ -434,7 +475,7 @@ void
 yield(void)
 {
   pushcli();  //DOC: yieldlock
-  myproc()->state = -RUNNABLE;
+  cas(&myproc()->state, RUNNING, -RUNNABLE);
   sched();
   popcli();
 }
@@ -485,7 +526,9 @@ sleep(void *chan, struct spinlock *lk)
   }
   // Go to sleep.
   p->chan = chan;
-  p->state = -SLEEPING;
+  cas(&p->state, RUNNING, -SLEEPING);
+
+  //cas(&p->in_wait, 1, 0);
 
   sched();
 
@@ -510,7 +553,8 @@ wakeup1(void *chan)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if((p->state == SLEEPING || p->state == -SLEEPING) && p->chan == chan){
       while(!cas(&p->state, SLEEPING, RUNNABLE)){
-          
+           //cprintf("in wakeup1!!!!!" );
+      
       }
     }
   }
@@ -537,10 +581,11 @@ kill(int pid , int signum)
   pushcli();
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
-      p->pending_signals = p->pending_signals | 1<<signum;
+      p->pending_signals = p->pending_signals | (1<<signum);
       if(signum == SIGKILL){
         while(p->state == SLEEPING || p->state == -SLEEPING){
           cas(&p->state, SLEEPING, RUNNABLE);
+           //cprintf("in kill!!!!!" );
         }
       } 
       popcli();
@@ -674,6 +719,7 @@ void return_from_sig_stop_handler(void){
   int is_blocked_in_stop;
   //check if p is suspended and has SIGCOUNT
   while(p->suspended){
+     //cprintf("in return_from_sig_stop!!!!!" );
     for(int j=0; j<32; j=j+1){
       signal_index_in_stop = 1<<j; 
       is_blocked_in_stop = (p->signal_mask & signal_index_in_stop) == signal_index_in_stop;
