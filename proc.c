@@ -24,7 +24,7 @@ static void wakeup1(void *chan);
 void
 pinit(void)
 {
-  initlock(&ptable.lock, "ptable");
+  //initlock(&ptable.lock, "ptable");
 }
 
 // Must be called with interrupts disabled
@@ -286,27 +286,7 @@ exit(void)
  
   cas(&curproc->state, RUNNING, -ZOMBIE);
 
-  //add now
-
-  // Parent might be sleeping in wait().
-  wakeup1(curproc->parent);
-
-  // Pass abandoned children to init.
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == curproc){
-      p->parent = initproc;
-      if(p->state == ZOMBIE || p->state == -ZOMBIE){
-        while(p->state == -ZOMBIE);
-        wakeup1(initproc);
-      }
-    }
-  }
-
-  // Jump into the scheduler, never to return.
-  //curproc->state = ZOMBIE;
-  sched();
-  panic("zombie exit");
-/*
+  //with lock
   do{
     if((!curproc->parent->in_wait) || (curproc->parent_in_wait) ){
       // Parent might be sleeping in wait().
@@ -331,7 +311,7 @@ exit(void)
 
   sched();
   panic("zombie exit");
-  */
+  
 }
 
 // Wait for a child process to exit and return its pid.
@@ -347,18 +327,18 @@ wait(void)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    //curproc->in_wait =1;
+    curproc->in_wait =1;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE || p->state == -ZOMBIE){
         while(p->state == -ZOMBIE){ // need to wait antil it zombie so i will not realse before done turning states
-          //p->parent_in_wait = 1;
+          p->parent_in_wait = 1;
            //cprintf("in wait -ZOMBIE!!!!!");
       
         }
-        //p->parent_in_wait =0;
+        p->parent_in_wait =0;
 
         // Found one.
         pid = p->pid;
@@ -528,7 +508,7 @@ sleep(void *chan, struct spinlock *lk)
   p->chan = chan;
   cas(&p->state, RUNNING, -SLEEPING);
 
-  //cas(&p->in_wait, 1, 0);
+  p->in_wait = 0;
 
   sched();
 
