@@ -57,8 +57,6 @@ struct proc {
   struct sigaction signal_handlers[32];
   int suspended;
   int already_in_signal;
-  int in_wait;                 //to prevent wait- exit unsynchronize 
-  int parent_in_wait;          //child has special permission to continue in exit 
 };
 
 // Process memory is laid out contiguously, low addresses first:
