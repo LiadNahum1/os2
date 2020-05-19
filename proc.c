@@ -542,13 +542,15 @@ int
 kill(int pid , int signum)
 {
   struct proc *p;
+  int is_blocked =0;
   if (signum > 31 || signum < 0)
   return -1;
   pushcli();
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       while(!cas(&p->pending_signals, p->pending_signals, p->pending_signals | (1<<signum)));
-      if(signum == SIGKILL){
+      is_blocked = (p->signal_mask & 1<<signum) == 1<<signum; //check if signal is blocked 
+      if((signum == SIGKILL) || (((int)(p->signal_handlers[signum].sa_handler) == SIGKILL) && !is_blocked )){
         while(p->state == SLEEPING || p->state == -SLEEPING){
            cas(&p->state, -SLEEPING, -RUNNABLE);
            cas(&p->state, SLEEPING, RUNNABLE);
@@ -685,7 +687,6 @@ void return_from_sig_stop_handler(void){
   int is_blocked_in_stop;
   //check if p is suspended and has SIGCOUNT
   while(p->suspended){
-     //cprintf("in return_from_sig_stop!!!!!" );
     for(int j=0; j<32; j=j+1){
       signal_index_in_stop = 1<<j; 
       is_blocked_in_stop = (p->signal_mask & signal_index_in_stop) == signal_index_in_stop;
