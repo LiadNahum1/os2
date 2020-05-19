@@ -413,8 +413,9 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       
        // transform from -x to x
-      cas( &p->state , -RUNNABLE , RUNNABLE);
+     
       cas( &p->state , -SLEEPING , SLEEPING);
+      cas( &p->state , -RUNNABLE , RUNNABLE);
       cas( &p->state , -ZOMBIE , ZOMBIE);
     
       c->proc = 0;
@@ -532,10 +533,8 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if((p->state == SLEEPING || p->state == -SLEEPING) && p->chan == chan){
-      while(!cas(&p->state, SLEEPING, RUNNABLE)){
-           //cprintf("in wakeup1!!!!!" );
-      
-      }
+      cas(&p->state, -SLEEPING, -RUNNABLE);
+      cas(&p->state, SLEEPING, RUNNABLE);
     }
   }
 }
@@ -564,8 +563,8 @@ kill(int pid , int signum)
       p->pending_signals = p->pending_signals | (1<<signum);
       if(signum == SIGKILL){
         while(p->state == SLEEPING || p->state == -SLEEPING){
-          cas(&p->state, SLEEPING, RUNNABLE);
-           //cprintf("in kill!!!!!" );
+           cas(&p->state, -SLEEPING, -RUNNABLE);
+           cas(&p->state, SLEEPING, RUNNABLE);
         }
       } 
       popcli();
