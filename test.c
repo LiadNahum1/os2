@@ -7,7 +7,7 @@ void signal_handler(int signum){
 }
 
 void signal_handler_2(int signum){
-    printf(1, "another function\n");
+    printf(1, "In another function\n");
 }
 
 void test1(){
@@ -73,6 +73,7 @@ void test3(){
 		sleep(100);
 		kill(pid, SIGKILL);
 		sleep(100);
+		sigaction(signum, &old,  null);
 		printf(1, "Sent SIGKILL to child\n");
 		wait();
 
@@ -97,7 +98,7 @@ void test4(){
 		act.sa_handler = signal_handler_2;
 		sigaction(signum, &act, null);
 		printf(1, "signal handler changed to be signal_handler2\n");
-		sleep(100);
+		sleep(200);
 		sigaction(signum, &old, null);
 		printf(1, "signal handler changed to be SIGKILL\n");
 		sleep(100);

@@ -320,11 +320,11 @@ wait(void)
 
       if (p->state == -ZOMBIE){
         curproc->chan = 0;
-        while(!cas(&(curproc->state), curproc->state, RUNNING));
+        cas(&(curproc->state), curproc->state, RUNNING);
       }
       while(cas(&(p->state), -ZOMBIE, -ZOMBIE));
       if(cas(&(p->state), ZOMBIE, -UNUSED)){
-        while(!cas(&(curproc->state), curproc->state, RUNNING));
+        cas(&(curproc->state), curproc->state, RUNNING);
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
@@ -403,7 +403,6 @@ scheduler(void)
       
        // transform from -x to x
      
-      //while(!((cas( &p->state , -SLEEPING , SLEEPING)) || (cas( &p->state , -RUNNABLE , RUNNABLE)) || (cas( &p->state , -ZOMBIE , ZOMBIE))));
       cas( &p->state , -SLEEPING , SLEEPING);
       cas( &p->state , -RUNNABLE , RUNNABLE);
       cas( &p->state , -ZOMBIE , ZOMBIE);
@@ -744,10 +743,8 @@ void check_for_signals(void){
         }
         else if ((int)p->signal_handlers[i].sa_handler == SIGSTOP){
           stop_handler();
-          p->signal_mask = p->signal_mask_backup;
-           //TODO CHECK WITH LISHAY 
-          return_from_sig_stop_handler();
-          //TODO CHECK WITH LISHAY          
+          p->signal_mask = p->signal_mask_backup; 
+          return_from_sig_stop_handler();         
         }
         else if ((int)p->signal_handlers[i].sa_handler == SIGKILL){
           kill_handler();
